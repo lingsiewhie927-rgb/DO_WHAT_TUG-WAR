@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🐰 疯狂动物城 · 拔河绘本战 🦊</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&amp;display=swap" rel="stylesheet">
+    <style>body { margin: 0; }</style><style>
+        /* 样式保持不变 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e0f2fe;
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .admin-bar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 2px solid #bae6fd;
+            z-index: 100;
+            flex-shrink: 0;
+        }
+        .choice-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .choice-btn:active { transform: scale(0.97); }
+        .battlefield { position: relative; width: 100%; display: flex; justify-content: center; align-items: center; overflow: visible; }
+        .rope-container { 
+            transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+            overflow: visible;
+            gap: 0;
+        }
+        .rope {
+            height: 22px;
+            background: #795548;
+            background-image: linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent);
+            background-size: 24px 24px;
+            border-radius: 40px;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+            border: 3px solid #3e2723;
+            width: 380px;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .fixed-center-dash { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 6px; height: 300px; background: repeating-linear-gradient(to bottom, #64748b 0px, #64748b 12px, transparent 12px, transparent 24px); z-index: 15; pointer-events: none; opacity: 0.7; }
+        .rope-marker { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 20; pointer-events: none; }
+        .rope-marker > div { width: 12px; height: 110px; background: linear-gradient(to bottom, #fde047, #f59e0b); border: 4px solid white; border-radius: 20px; }
+        @keyframes pull-feedback { 0% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.05) rotate(-2deg); } 100% { transform: scale(1) rotate(0deg); } }
+        .pull-anim { animation: pull-feedback 0.3s ease-out; }
+        .character { 
+            transition: all 0.4s cubic-bezier(0.34, 1.2, 0.64, 1);
+            filter: drop-shadow(0 12px 18px rgba(0,0,0,0.2));
+            flex-shrink: 0;
+            width: 130px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .character svg {
+            width: 120px;
+            height: auto;
+        }
+        .modal-overlay { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px); display: none; position: fixed; inset: 0; z-index: 200; align-items: center; justify-content: center; }
+        @keyframes float { 0%, 100% { transform: translateY(0) rotate(var(--base-rot)); } 50% { transform: translateY(-8px) rotate(var(--base-rot)); } }
+        .idle-float { animation: float 4s infinite ease-in-out; }
+        .table-wrapper { max-height: 380px; overflow-y: auto; border-radius: 20px; border: 2px solid #e2e8f0; }
+        .edit-table th { background: #f8fafc; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #334155; }
+        .report-card { max-height: 400px; overflow-y: auto; }
+        .disabled-btn { opacity: 0.6; pointer-events: none; filter: grayscale(0.1); }
+        .batch-panel { background: #fefce8; border-radius: 1.5rem; padding: 1rem; margin-bottom: 1rem; border: 2px solid #fde047; }
+        .password-eye { cursor: pointer; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); user-select: none; }
+        .lock-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; color: white; backdrop-filter: blur(12px); }
+        .input-group { position: relative; margin-bottom: 1rem; }
+        .pdf-report-container {
+            font-family: 'Inter', sans-serif;
+            background: white;
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+        .pdf-header { text-align: center; border-bottom: 3px solid #cbd5e1; margin-bottom: 1.5rem; padding-bottom: 1rem; }
+        .pdf-score { font-size: 1.8rem; font-weight: 800; text-align: center; background: #f1f5f9; display: inline-block; padding: 0.5rem 1.5rem; border-radius: 2rem; margin: 1rem auto; }
+        .pdf-two-columns { display: flex; flex-direction: row; gap: 2rem; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; }
+        .pdf-column { flex: 1; min-width: 280px; break-inside: avoid; }
+        .pdf-card { border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1rem; margin-bottom: 1.5rem; background: white; height: 100%; }
+        .pdf-card-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 1rem; border-left: 6px solid; padding-left: 0.75rem; }
+        .pdf-record { border-bottom: 1px solid #e2e8f0; padding: 0.75rem 0; }
+        .pdf-record:last-child { border-bottom: none; }
+        .pdf-question { font-weight: 700; margin-bottom: 0.25rem; font-size: 0.95rem; }
+        .pdf-answer { font-size: 0.85rem; margin-left: 0.5rem; }
+        .correct-badge { color: #15803d; font-weight: 600; }
+        .wrong-badge { color: #b91c1c; font-weight: 600; }
+        .pdf-correct-answer { margin-top: 0.2rem; font-size: 0.8rem; color: #475569; }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0px}.top-0{top:0px}.z-10{z-index:10}.z-20{z-index:20}.z-50{z-index:50}.mx-4{margin-left:1rem;margin-right:1rem}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:0.25rem}.mb-2{margin-bottom:0.5rem}.mb-3{margin-bottom:0.75rem}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mt-1{margin-top:0.25rem}.mt-2{margin-top:0.5rem}.mt-3{margin-top:0.75rem}.mt-4{margin-top:1rem}.mt-5{margin-top:1.25rem}.mt-6{margin-top:1.5rem}.inline-block{display:inline-block}.flex{display:flex}.grid{display:grid}.hidden{display:none}.min-h-\[140px\]{min-height:140px}.w-1\/4{width:25%}.w-16{width:4rem}.w-28{width:7rem}.w-80{width:20rem}.w-96{width:24rem}.w-full{width:100%}.max-w-4xl{max-width:56rem}.max-w-6xl{max-width:72rem}.max-w-7xl{max-width:80rem}.max-w-md{max-width:28rem}.flex-1{flex:1 1 0%}.flex-grow{flex-grow:1}.border-collapse{border-collapse:collapse}.cursor-not-allowed{cursor:not-allowed}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-2{gap:0.5rem}.gap-2\.5{gap:0.625rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.rounded-2xl{border-radius:1rem}.rounded-3xl{border-radius:1.5rem}.rounded-\[2\.5rem\]{border-radius:2.5rem}.rounded-full{border-radius:9999px}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-4{border-width:4px}.border-b-8{border-bottom-width:8px}.border-l-4{border-left-width:4px}.border-r-4{border-right-width:4px}.border-b{border-bottom-width:1px}.border-blue-100{--tw-border-opacity:1;border-color:rgb(219 234 254 / var(--tw-border-opacity, 1))}.border-blue-200{--tw-border-opacity:1;border-color:rgb(191 219 254 / var(--tw-border-opacity, 1))}.border-blue-200\/60{border-color:rgb(191 219 254 / 0.6)}.border-blue-300{--tw-border-opacity:1;border-color:rgb(147 197 253 / var(--tw-border-opacity, 1))}.border-emerald-200{--tw-border-opacity:1;border-color:rgb(167 243 208 / var(--tw-border-opacity, 1))}.border-indigo-200{--tw-border-opacity:1;border-color:rgb(199 210 254 / var(--tw-border-opacity, 1))}.border-orange-100{--tw-border-opacity:1;border-color:rgb(255 237 213 / var(--tw-border-opacity, 1))}.border-orange-200\/60{border-color:rgb(254 215 170 / 0.6)}.border-orange-300{--tw-border-opacity:1;border-color:rgb(253 186 116 / var(--tw-border-opacity, 1))}.border-purple-200{--tw-border-opacity:1;border-color:rgb(233 213 255 / var(--tw-border-opacity, 1))}.border-slate-100{--tw-border-opacity:1;border-color:rgb(241 245 249 / var(--tw-border-opacity, 1))}.border-slate-200{--tw-border-opacity:1;border-color:rgb(226 232 240 / var(--tw-border-opacity, 1))}.border-slate-300{--tw-border-opacity:1;border-color:rgb(203 213 225 / var(--tw-border-opacity, 1))}.border-yellow-400\/50{border-color:rgb(250 204 21 / 0.5)}.bg-amber-100{--tw-bg-opacity:1;background-color:rgb(254 243 199 / var(--tw-bg-opacity, 1))}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255 / var(--tw-bg-opacity, 1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235 / var(--tw-bg-opacity, 1))}.bg-blue-700{--tw-bg-opacity:1;background-color:rgb(29 78 216 / var(--tw-bg-opacity, 1))}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105 / var(--tw-bg-opacity, 1))}.bg-gray-200{--tw-bg-opacity:1;background-color:rgb(229 231 235 / var(--tw-bg-opacity, 1))}.bg-green-500{--tw-bg-opacity:1;background-color:rgb(34 197 94 / var(--tw-bg-opacity, 1))}.bg-indigo-500{--tw-bg-opacity:1;background-color:rgb(99 102 241 / var(--tw-bg-opacity, 1))}.bg-indigo-600{--tw-bg-opacity:1;background-color:rgb(79 70 229 / var(--tw-bg-opacity, 1))}.bg-orange-50{--tw-bg-opacity:1;background-color:rgb(255 247 237 / var(--tw-bg-opacity, 1))}.bg-orange-500{--tw-bg-opacity:1;background-color:rgb(249 115 22 / var(--tw-bg-opacity, 1))}.bg-orange-600{--tw-bg-opacity:1;background-color:rgb(234 88 12 / var(--tw-bg-opacity, 1))}.bg-purple-600{--tw-bg-opacity:1;background-color:rgb(147 51 234 / var(--tw-bg-opacity, 1))}.bg-slate-100{--tw-bg-opacity:1;background-color:rgb(241 245 249 / var(--tw-bg-opacity, 1))}.bg-slate-50{--tw-bg-opacity:1;background-color:rgb(248 250 252 / var(--tw-bg-opacity, 1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.bg-slate-900\/90{background-color:rgb(15 23 42 / 0.9)}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.bg-white\/10{background-color:rgb(255 255 255 / 0.1)}.bg-white\/90{background-color:rgb(255 255 255 / 0.9)}.bg-gradient-to-b{background-image:linear-gradient(to bottom, var(--tw-gradient-stops))}.from-blue-50{--tw-gradient-from:#eff6ff var(--tw-gradient-from-position);--tw-gradient-to:rgb(239 246 255 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-orange-50{--tw-gradient-from:#fff7ed var(--tw-gradient-from-position);--tw-gradient-to:rgb(255 247 237 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-sky-50{--tw-gradient-from:#f0f9ff var(--tw-gradient-from-position);--tw-gradient-to:rgb(240 249 255 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.via-white{--tw-gradient-to:rgb(255 255 255 / 0)  var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), #fff var(--tw-gradient-via-position), var(--tw-gradient-to)}.to-amber-50\/30{--tw-gradient-to:rgb(255 251 235 / 0.3) var(--tw-gradient-to-position)}.to-white{--tw-gradient-to:#fff var(--tw-gradient-to-position)}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.p-2{padding:0.5rem}.px-10{padding-left:2.5rem;padding-right:2.5rem}.px-12{padding-left:3rem;padding-right:3rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-7{padding-left:1.75rem;padding-right:1.75rem}.px-8{padding-left:2rem;padding-right:2rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-5{padding-top:1.25rem;padding-bottom:1.25rem}.pr-10{padding-right:2.5rem}.pr-2{padding-right:0.5rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-5xl{font-size:3rem;line-height:1}.text-7xl{font-size:4.5rem;line-height:1}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-black{font-weight:900}.font-bold{font-weight:700}.uppercase{text-transform:uppercase}.italic{font-style:italic}.leading-5{line-height:1.25rem}.leading-snug{line-height:1.375}.tracking-\[0\.2em\]{letter-spacing:0.2em}.tracking-tight{letter-spacing:-0.025em}.tracking-tighter{letter-spacing:-0.05em}.tracking-wider{letter-spacing:0.05em}.text-amber-600{--tw-text-opacity:1;color:rgb(217 119 6 / var(--tw-text-opacity, 1))}.text-amber-800{--tw-text-opacity:1;color:rgb(146 64 14 / var(--tw-text-opacity, 1))}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235 / var(--tw-text-opacity, 1))}.text-blue-700{--tw-text-opacity:1;color:rgb(29 78 216 / var(--tw-text-opacity, 1))}.text-emerald-700{--tw-text-opacity:1;color:rgb(4 120 87 / var(--tw-text-opacity, 1))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128 / var(--tw-text-opacity, 1))}.text-orange-500{--tw-text-opacity:1;color:rgb(249 115 22 / var(--tw-text-opacity, 1))}.text-orange-600{--tw-text-opacity:1;color:rgb(234 88 12 / var(--tw-text-opacity, 1))}.text-orange-700{--tw-text-opacity:1;color:rgb(194 65 12 / var(--tw-text-opacity, 1))}.text-purple-700{--tw-text-opacity:1;color:rgb(126 34 206 / var(--tw-text-opacity, 1))}.text-red-500{--tw-text-opacity:1;color:rgb(239 68 68 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-600{--tw-text-opacity:1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))}.text-slate-700{--tw-text-opacity:1;color:rgb(51 65 85 / var(--tw-text-opacity, 1))}.text-slate-800{--tw-text-opacity:1;color:rgb(30 41 59 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.text-red-400{--tw-text-opacity:1;color:rgb(248 113 113 / var(--tw-text-opacity, 1))}.opacity-50{opacity:0.5}.opacity-80{opacity:0.8}.shadow{--tw-shadow:0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 1px 3px 0 var(--tw-shadow-color), 0 1px 2px -1px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.outline-none{outline:2px solid transparent;outline-offset:2px}.drop-shadow-sm{--tw-drop-shadow:drop-shadow(0 1px 1px rgb(0 0 0 / 0.05));filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-200{transition-duration:200ms}.hover\:bg-amber-200:hover{--tw-bg-opacity:1;background-color:rgb(253 230 138 / var(--tw-bg-opacity, 1))}.hover\:bg-blue-50:hover{--tw-bg-opacity:1;background-color:rgb(239 246 255 / var(--tw-bg-opacity, 1))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216 / var(--tw-bg-opacity, 1))}.hover\:bg-emerald-50:hover{--tw-bg-opacity:1;background-color:rgb(236 253 245 / var(--tw-bg-opacity, 1))}.hover\:bg-emerald-700:hover{--tw-bg-opacity:1;background-color:rgb(4 120 87 / var(--tw-bg-opacity, 1))}.hover\:bg-green-600:hover{--tw-bg-opacity:1;background-color:rgb(22 163 74 / var(--tw-bg-opacity, 1))}.hover\:bg-indigo-600:hover{--tw-bg-opacity:1;background-color:rgb(79 70 229 / var(--tw-bg-opacity, 1))}.hover\:bg-indigo-700:hover{--tw-bg-opacity:1;background-color:rgb(67 56 202 / var(--tw-bg-opacity, 1))}.hover\:bg-orange-600:hover{--tw-bg-opacity:1;background-color:rgb(234 88 12 / var(--tw-bg-opacity, 1))}.hover\:bg-purple-50:hover{--tw-bg-opacity:1;background-color:rgb(250 245 255 / var(--tw-bg-opacity, 1))}.hover\:bg-purple-700:hover{--tw-bg-opacity:1;background-color:rgb(126 34 206 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-200:hover{--tw-bg-opacity:1;background-color:rgb(226 232 240 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-50:hover{--tw-bg-opacity:1;background-color:rgb(248 250 252 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-900:hover{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-50\/80:hover{background-color:rgb(248 250 252 / 0.8)}.hover\:text-gray-800:hover{--tw-text-opacity:1;color:rgb(31 41 55 / var(--tw-text-opacity, 1))}.hover\:text-indigo-600:hover{--tw-text-opacity:1;color:rgb(79 70 229 / var(--tw-text-opacity, 1))}.hover\:text-purple-600:hover{--tw-text-opacity:1;color:rgb(147 51 234 / var(--tw-text-opacity, 1))}.focus\:border-blue-500:focus{--tw-border-opacity:1;border-color:rgb(59 130 246 / var(--tw-border-opacity, 1))}.focus\:border-indigo-400:focus{--tw-border-opacity:1;border-color:rgb(129 140 248 / var(--tw-border-opacity, 1))}.focus\:border-purple-400:focus{--tw-border-opacity:1;border-color:rgb(192 132 252 / var(--tw-border-opacity, 1))}@media (min-width: 768px){.md\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}}</style></head>
+<body>
+
+    <!-- 顶部管理栏 -->
+    <header class="admin-bar p-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex gap-2">
+                <button id="timeBtn" class="px-4 py-1.5 bg-white border-2 border-blue-200 rounded-xl text-blue-700 font-bold text-sm hover:bg-blue-50 shadow-sm">⏱ 时长</button>
+                <button id="quizBtn" class="px-4 py-1.5 bg-white border-2 border-blue-200 rounded-xl text-blue-700 font-bold text-sm hover:bg-blue-50 shadow-sm">📚 题库</button>
+                <button id="changePwdBtn" class="px-4 py-1.5 bg-white border-2 border-purple-200 rounded-xl text-purple-700 font-bold text-sm hover:bg-purple-50 shadow-sm">🔑 改密码</button>
+                <button id="generateHtmlBtn" class="px-4 py-1.5 bg-white border-2 border-emerald-200 rounded-xl text-emerald-700 font-bold text-sm hover:bg-emerald-50 shadow-sm">💾 生成HTML</button>
+            </div>
+            <div class="text-center">
+                <h1 class="text-xl font-black text-slate-800 tracking-tight">ZOOTOPIA <span class="text-blue-600">TUG</span>·<span class="text-orange-500">WAR</span></h1>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="resetGame()" class="px-4 py-1.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 border border-slate-200">🔄 重置</button>
+                <button id="startBtn" onclick="applyAndStart()" class="bg-blue-600 text-white py-1.5 px-7 rounded-xl font-black text-sm shadow-lg hover:bg-blue-700 transition">⚡ 开始对战</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 时长弹窗 -->
+    <div id="time-modal" class="modal-overlay" onclick="if(event.target===this) closeModal('time-modal')">
+        <div class="bg-white p-8 rounded-[2.5rem] shadow-2xl w-80 border-4 border-blue-100">
+            <h3 class="font-black text-slate-800 mb-4 text-center text-2xl">⏳ 比赛时间</h3>
+            <input type="number" id="setup-time" value="30" min="10" max="120" class="w-full px-4 py-5 border-4 border-slate-100 rounded-3xl outline-none focus:border-blue-500 font-black text-center text-5xl text-slate-700">
+            <button onclick="closeModal('time-modal')" class="w-full mt-6 bg-slate-800 text-white py-4 rounded-2xl font-black text-lg hover:bg-slate-900">确定</button>
+        </div>
+    </div>
+
+    <!-- 题库弹窗 -->
+    <div id="ques-modal" class="modal-overlay" onclick="if(event.target===this) closeModal('ques-modal')" style="display: none;">
+        <div class="bg-white p-6 rounded-[2.5rem] shadow-2xl w-full max-w-6xl border-4 border-orange-100 mx-4">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 class="font-black text-slate-800 text-2xl flex items-center gap-2">📖 编辑绘本题库</h3>
+                <div class="flex gap-2">
+                    <button onclick="openBatchPanel()" class="bg-indigo-500 text-white px-4 py-2 rounded-xl font-bold text-sm shadow hover:bg-indigo-600">📋 批量导入</button>
+                    <button onclick="addQuestionRow()" class="bg-green-500 text-white px-4 py-2 rounded-xl font-bold text-sm shadow hover:bg-green-600">➕ 添加一行</button>
+                    <button onclick="resetDefaultTable()" class="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl font-bold text-sm shadow hover:bg-amber-200">🔄 恢复默认</button>
+                </div>
+            </div>
+            <div id="batch-panel" class="batch-panel hidden transition-all duration-200">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-bold text-slate-700 text-sm">📌 批量粘贴题目 (每行格式: 题目,选项A,选项B,选项C,选项D,正确答案)</span>
+                    <button onclick="closeBatchPanel()" class="text-gray-500 hover:text-gray-800 text-xl leading-5">✕</button>
+                </div>
+                <textarea id="batch-text" rows="5" class="w-full p-3 border-2 border-slate-200 rounded-xl font-mono text-sm" placeholder="示例：
+朱迪在《疯狂动物城》中的全名是？,朱迪·霍普斯,朱迪·兔,霍普斯警官,朱迪·萝卜,朱迪·霍普斯
+尼克推销给仓鼠的冰棍是什么做的？,红色冰棍,蓝色冰棍,绿色冰棍,黄色冰棍,红色冰棍"></textarea>
+                <div class="flex justify-end gap-2 mt-3">
+                    <button onclick="clearBatchText()" class="px-4 py-2 bg-gray-200 rounded-xl text-sm font-bold">清空</button>
+                    <button onclick="importBatchQuestions()" class="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow">✨ 解析并追加</button>
+                </div>
+                <p class="text-xs text-slate-500 mt-2">💡 支持逗号(,)、制表符、竖线(|)作为分隔符。</p>
+            </div>
+            <div class="table-wrapper">
+                <table class="edit-table w-full text-sm border-collapse">
+                    <thead class="sticky top-0 bg-slate-50 z-10">
+                        <tr><th class="p-3 text-left w-1/4">题目</th><th class="p-3 text-left">A</th><th class="p-3 text-left">B</th><th class="p-3 text-left">C</th><th class="p-3 text-left">D</th><th class="p-3 text-left w-28">正确答案</th><th class="p-3 text-center w-16">操作</th></tr>
+                    </thead>
+                    <tbody id="questions-table-body"><tr class="border-b border-slate-200 hover:bg-slate-50/80"><td class="p-2"><input type="text" value="朱迪在《疯狂动物城》中的全名是？" placeholder="题目" class="question-input"></td><td class="p-2"><input type="text" value="朱迪·霍普斯" placeholder="A" class="opt-a"></td><td class="p-2"><input type="text" value="朱迪·兔" placeholder="B" class="opt-b"></td><td class="p-2"><input type="text" value="霍普斯警官" placeholder="C" class="opt-c"></td><td class="p-2"><input type="text" value="朱迪·萝卜" placeholder="D" class="opt-d"></td><td class="p-2"><select class="correct-select"><option value="11111111">A: 11111111</option><option value="朱迪·兔">B: 朱迪·兔</option><option value="霍普斯警官">C: 霍普斯警官</option><option value="朱迪·萝卜">D: 朱迪·萝卜</option></select></td><td class="p-2 text-center"><button onclick="this.closest('tr').remove()" class="text-red-400 font-bold">🗑️</button></td></tr><tr class="border-b border-slate-200 hover:bg-slate-50/80"><td class="p-2"><input type="text" value="尼克推销给仓鼠的冰棍是什么做的？" placeholder="题目" class="question-input"></td><td class="p-2"><input type="text" value="红色冰棍" placeholder="A" class="opt-a"></td><td class="p-2"><input type="text" value="蓝色冰棍" placeholder="B" class="opt-b"></td><td class="p-2"><input type="text" value="绿色冰棍" placeholder="C" class="opt-c"></td><td class="p-2"><input type="text" value="黄色冰棍" placeholder="D" class="opt-d"></td><td class="p-2"><select class="correct-select"><option value="红色冰棍">A: 红色冰棍</option><option value="蓝色冰棍">B: 蓝色冰棍</option><option value="绿色冰棍">C: 绿色冰棍</option><option value="黄色冰棍">D: 黄色冰棍</option></select></td><td class="p-2 text-center"><button onclick="this.closest('tr').remove()" class="text-red-400 font-bold">🗑️</button></td></tr><tr class="border-b border-slate-200 hover:bg-slate-50/80"><td class="p-2"><input type="text" value="闪电（Flash）是什么动物？" placeholder="题目" class="question-input"></td><td class="p-2"><input type="text" value="树懒" placeholder="A" class="opt-a"></td><td class="p-2"><input type="text" value="树袋熊" placeholder="B" class="opt-b"></td><td class="p-2"><input type="text" value="蜗牛" placeholder="C" class="opt-c"></td><td class="p-2"><input type="text" value="海龟" placeholder="D" class="opt-d"></td><td class="p-2"><select class="correct-select"><option value="树懒">A: 树懒</option><option value="树袋熊">B: 树袋熊</option><option value="蜗牛">C: 蜗牛</option><option value="海龟">D: 海龟</option></select></td><td class="p-2 text-center"><button onclick="this.closest('tr').remove()" class="text-red-400 font-bold">🗑️</button></td></tr><tr class="border-b border-slate-200 hover:bg-slate-50/80"><td class="p-2"><input type="text" value="动物城的大先生(Mr. Big)其实是？" placeholder="题目" class="question-input"></td><td class="p-2"><input type="text" value="鼩鼱" placeholder="A" class="opt-a"></td><td class="p-2"><input type="text" value="北极熊" placeholder="B" class="opt-b"></td><td class="p-2"><input type="text" value="老鼠" placeholder="C" class="opt-c"></td><td class="p-2"><input type="text" value="狐狸" placeholder="D" class="opt-d"></td><td class="p-2"><select class="correct-select"><option value="鼩鼱">A: 鼩鼱</option><option value="北极熊">B: 北极熊</option><option value="老鼠">C: 老鼠</option><option value="狐狸">D: 狐狸</option></select></td><td class="p-2 text-center"><button onclick="this.closest('tr').remove()" class="text-red-400 font-bold">🗑️</button></td></tr><tr class="border-b border-slate-200 hover:bg-slate-50/80"><td class="p-2"><input type="text" value="朱迪住的公寓隔壁邻居总是很？" placeholder="题目" class="question-input"></td><td class="p-2"><input type="text" value="吵闹" placeholder="A" class="opt-a"></td><td class="p-2"><input type="text" value="安静" placeholder="B" class="opt-b"></td><td class="p-2"><input type="text" value="神秘" placeholder="C" class="opt-c"></td><td class="p-2"><input type="text" value="友善" placeholder="D" class="opt-d"></td><td class="p-2"><select class="correct-select"><option value="吵闹">A: 吵闹</option><option value="安静">B: 安静</option><option value="神秘">C: 神秘</option><option value="友善">D: 友善</option></select></td><td class="p-2 text-center"><button onclick="this.closest('tr').remove()" class="text-red-400 font-bold">🗑️</button></td></tr><tr class="border-b border-slate-200 hover:bg-slate-50/80"><td class="p-2"><input type="text" value="尼克小时候想加入什么组织？" placeholder="题目" class="question-input"></td><td class="p-2"><input type="text" value="童子军" placeholder="A" class="opt-a"></td><td class="p-2"><input type="text" value="警察局" placeholder="B" class="opt-b"></td><td class="p-2"><input type="text" value="狐狸帮" placeholder="C" class="opt-c"></td><td class="p-2"><input type="text" value="话剧社" placeholder="D" class="opt-d"></td><td class="p-2"><select class="correct-select"><option value="童子军">A: 童子军</option><option value="警察局">B: 警察局</option><option value="狐狸帮">C: 狐狸帮</option><option value="话剧社">D: 话剧社</option></select></td><td class="p-2 text-center"><button onclick="this.closest('tr').remove()" class="text-red-400 font-bold">🗑️</button></td></tr></tbody>
+                </table>
+            </div>
+            <div class="flex justify-end mt-5">
+                <button onclick="saveTableAndClose()" class="bg-orange-500 text-white px-8 py-3 rounded-2xl font-black shadow-md hover:bg-orange-600">💾 保存并关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 密码验证模态框 -->
+    <div id="password-modal" class="modal-overlay" style="z-index: 1000; display: none;">
+        <div class="bg-white rounded-3xl shadow-2xl w-96 p-6 border-4 border-indigo-200 relative">
+            <div class="text-center mb-4"><h3 class="font-black text-2xl text-slate-800">🔐 管理员验证</h3><p class="text-sm text-slate-500 mt-1">请输入密码以修改比赛设置</p></div>
+            <div class="relative mb-3"><input type="password" id="password-input" class="w-full p-3 border-2 border-slate-200 rounded-xl pr-10 focus:border-indigo-400 outline-none font-mono" placeholder="密码"><span id="toggle-password" class="password-eye text-slate-400 hover:text-indigo-600">👁️</span></div>
+            <div class="flex justify-between items-center text-sm mb-4"><span id="attempts-left" class="text-red-500 font-bold">剩余尝试次数: 5</span><span id="wait-timer" class="text-amber-600 font-mono"></span></div>
+            <div class="flex gap-3"><button id="cancel-pwd-btn" class="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold hover:bg-slate-50">取消</button><button id="confirm-pwd-btn" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold shadow hover:bg-indigo-700">确认</button></div>
+        </div>
+    </div>
+
+    <!-- 更换密码模态框 -->
+    <div id="change-pwd-modal" class="modal-overlay" style="z-index: 1000;">
+        <div class="bg-white rounded-3xl shadow-2xl w-96 p-6 border-4 border-purple-200 relative">
+            <div class="text-center mb-4"><h3 class="font-black text-2xl text-slate-800">🔐 更换管理员密码</h3><p class="text-sm text-slate-500 mt-1">请先验证当前密码，再设置新密码</p></div>
+            <div class="input-group relative mb-3"><input type="password" id="current-pwd" class="w-full p-3 border-2 border-slate-200 rounded-xl pr-10 focus:border-purple-400 outline-none" placeholder="当前密码"><span id="toggle-current" class="password-eye text-slate-400 hover:text-purple-600">👁️</span></div>
+            <div class="input-group relative mb-3"><input type="password" id="new-pwd" class="w-full p-3 border-2 border-slate-200 rounded-xl pr-10 focus:border-purple-400 outline-none" placeholder="新密码"><span id="toggle-new" class="password-eye text-slate-400 hover:text-purple-600">👁️</span></div>
+            <div class="input-group relative mb-4"><input type="password" id="confirm-pwd" class="w-full p-3 border-2 border-slate-200 rounded-xl pr-10 focus:border-purple-400 outline-none" placeholder="确认新密码"><span id="toggle-confirm" class="password-eye text-slate-400 hover:text-purple-600">👁️</span></div>
+            <div class="flex justify-between items-center text-sm mb-4"><span id="change-attempts-left" class="text-red-500 font-bold">剩余尝试次数: 5</span><span id="change-wait-timer" class="text-amber-600 font-mono"></span></div>
+            <div class="flex gap-3"><button id="cancel-change-btn" class="flex-1 py-2.5 rounded-xl border border-slate-300 font-bold hover:bg-slate-50">取消</button><button id="confirm-change-btn" class="flex-1 py-2.5 rounded-xl bg-purple-600 text-white font-bold shadow hover:bg-purple-700">确认更换</button></div>
+        </div>
+    </div>
+
+    <!-- 永久封锁遮罩 -->
+    <div id="global-lock" style="display: none;" class="lock-overlay"><div class="text-center p-6 max-w-md"><div class="text-7xl mb-4">🔒</div><h2 class="text-3xl font-black mb-3">页面已封锁</h2><p class="text-lg mb-2">由于多次密码错误，管理员功能已永久锁定。</p><p class="text-sm opacity-80">如需解锁，请联系系统管理员。</p><div class="mt-6 p-3 bg-white/10 rounded-xl inline-block">错误代码: LOCK-0987</div></div></div>
+
+    <!-- 主游戏区 -->
+    <div class="flex-grow flex w-full overflow-hidden">
+        <aside class="w-1/4 bg-gradient-to-b from-blue-50 to-white flex flex-col p-4 border-r-4 border-blue-200/60">
+            <div class="flex flex-col items-center mb-2"><div class="bg-blue-700 text-white px-5 py-1.5 rounded-full text-xs font-black uppercase mb-1 shadow-md">🐰 朱迪·霍普斯</div><div id="score1" class="text-7xl font-black text-blue-700 drop-shadow-sm">0</div></div>
+            <div class="flex-grow flex flex-col justify-center gap-3"><div class="p-5 bg-white rounded-3xl shadow-xl border-b-8 border-blue-300 min-h-[140px] flex items-center justify-center text-center"><p id="q1" class="text-slate-800 text-xl font-black leading-snug">🐾 准备答题！</p></div><div id="opts1" class="grid gap-2.5"></div></div>
+        </aside>
+        <main class="flex-grow flex flex-col relative bg-gradient-to-b from-sky-50 via-white to-amber-50/30 overflow-hidden">
+            <div class="flex justify-center py-4 z-20"><div class="bg-slate-900/90 backdrop-blur-sm px-10 py-3 rounded-3xl shadow-2xl border-2 border-yellow-400/50"><span id="timer" class="text-5xl font-mono font-black text-white tracking-wider">00:30</span></div></div>
+            <div class="flex-grow flex flex-col items-center justify-center">
+                <div class="battlefield">
+                    <div class="fixed-center-dash"></div>
+                    <div id="rope-move-container" class="rope-container">
+                        <div id="char-blue" class="character idle-float" style="--base-rot: 5deg; margin-right: -8px;">
+                            <svg width="120" height="180" viewBox="0 0 200 260">
+                                <g transform="translate(100, 60)">
+                                    <path d="M-35 -10 C-65 -100 -25 -110 -5 -10" fill="#9ca3af" stroke="#1e3a8a" stroke-width="2.5"></path>
+                                    <path d="M35 -10 C65 -100 25 -110 5 -10" fill="#9ca3af" stroke="#1e3a8a" stroke-width="2.5"></path>
+                                </g>
+                                <ellipse cx="100" cy="95" rx="48" ry="43" fill="#e5e7eb" stroke="#1e3a8a" stroke-width="2.5"></ellipse>
+                                <path d="M65 135 L135 135 L150 210 L50 210 Z" fill="#1e3a8a" stroke="#0f172a" stroke-width="2"></path>
+                                <rect x="50" y="195" width="100" height="18" fill="#111827" rx="5"></rect>
+                                <circle cx="100" cy="160" r="9" fill="#fbbf24"></circle>
+                                <path d="M135 160 Q180 165 200 175" stroke="#9ca3af" stroke-width="16" stroke-linecap="round" fill="none"></path>
+                            </svg>
+                        </div>
+                        <div class="relative flex items-center justify-center">
+                            <div class="rope">
+                                <div class="rope-marker"><div></div></div>
+                            </div>
+                        </div>
+                        <div id="char-red" class="character idle-float" style="--base-rot: -5deg; margin-left: -8px;">
+                            <svg width="120" height="180" viewBox="0 0 220 260">
+                                <path d="M75 55 L55 -5 L100 45" fill="#ea580c" stroke="#431407" stroke-width="2.5"></path>
+                                <path d="M125 55 L145 -5 L100 45" fill="#ea580c" stroke="#431407" stroke-width="2.5"></path>
+                                <path d="M50 95 Q100 45 150 95 Q165 135 100 145 Q35 135 50 95" fill="#fb923c" stroke="#7c2d12" stroke-width="2.5"></path>
+                                <rect x="65" y="145" width="75" height="85" rx="12" fill="#84cc16" stroke="#365314" stroke-width="2.5"></rect>
+                                <path d="M65 165 Q30 165 0 175" stroke="#fb923c" stroke-width="18" stroke-linecap="round" fill="none"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div id="status-label" class="mb-4 px-12 py-3 bg-white/90 backdrop-blur-sm shadow-xl rounded-full font-black text-slate-800 italic uppercase tracking-[0.2em] border-2 border-slate-200 text-sm z-20">⚡ 拉 锯 战 ⚡</div>
+            </div>
+            <div id="game-over" class="hidden">
+                <h2 id="winner-text" class="text-7xl font-black mb-2 italic tracking-tighter">WINNER</h2><div id="final-stats" class="text-slate-700 text-3xl font-black italic mb-6">0 : 0</div>
+                <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"><div class="bg-blue-50 p-4 rounded-3xl border-2 border-blue-100"><h4 class="font-black text-blue-700 mb-2 flex items-center justify-center gap-2">🐰 朱迪的答题卡</h4><div id="judy-report" class="report-card space-y-2 text-left pr-2"></div></div><div class="bg-orange-50 p-4 rounded-3xl border-2 border-orange-100"><h4 class="font-black text-orange-700 mb-2 flex items-center justify-center gap-2">🦊 尼克的答题卡</h4><div id="nick-report" class="report-card space-y-2 text-left pr-2"></div></div></div>
+                <div class="flex gap-4 items-center justify-center flex-wrap"><button id="downloadPdfBtn" class="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-black text-xl shadow-lg hover:bg-emerald-700 transition-all flex items-center gap-2">📄 下载战报 PDF</button><button id="playAgainBtn" class="bg-slate-900 text-white px-10 py-3 rounded-2xl font-black text-xl shadow-2xl opacity-50 cursor-not-allowed transition-all" disabled="">✨ 再战一局 ✨</button></div>
+                <p class="text-xs text-slate-400 mt-4">⚠️ 请先下载战报PDF，才能再次游戏</p>
+            </div>
+        </main>
+        <aside class="w-1/4 bg-gradient-to-b from-orange-50 to-white flex flex-col p-4 border-l-4 border-orange-200/60 text-right">
+            <div class="flex flex-col items-center mb-2"><div class="bg-orange-600 text-white px-5 py-1.5 rounded-full text-xs font-black uppercase mb-1 shadow-md">🦊 尼克·王尔德</div><div id="score2" class="text-7xl font-black text-orange-600 drop-shadow-sm">0</div></div>
+            <div class="flex-grow flex flex-col justify-center gap-3"><div class="p-5 bg-white rounded-3xl shadow-xl border-b-8 border-orange-300 min-h-[140px] flex items-center justify-center text-center"><p id="q2" class="text-slate-800 text-xl font-black leading-snug">🦊 放马过来！</p></div><div id="opts2" class="grid gap-2.5"></div></div>
+        </aside>
+    </div>
+
+    <script>
+        (function(){
+            "use strict";
+            // ================= 密码管理核心 =================
+            let passwordUnlocked = false;
+            let remainingAttempts = 5;
+            let isWaiting = false;
+            let waitTimeout = null;
+            let pendingModalId = null;
+            let globalLocked = false;
+            let currentPassword = localStorage.getItem('zootopia_admin_pwd') || "0987";
+            function savePasswordToLocal(pwd) { localStorage.setItem('zootopia_admin_pwd', pwd); currentPassword = pwd; }
+            function processWrongPassword() { if(globalLocked) return; remainingAttempts--; updateAttemptsDisplay(); if(remainingAttempts <= 0) permanentLock(); else startWaitPenalty(5); }
+            function startWaitPenalty(seconds) { if(isWaiting) return; isWaiting = true; const confirmBtns = [document.getElementById('confirm-pwd-btn'), document.getElementById('confirm-change-btn')]; confirmBtns.forEach(btn => { if(btn) btn.disabled = true; }); const pwdInputs = [document.getElementById('password-input'), document.getElementById('current-pwd')]; pwdInputs.forEach(inp => { if(inp) inp.disabled = true; }); let remain = seconds; const updateTimer = () => { const waitSpan = document.getElementById('wait-timer'); const changeWaitSpan = document.getElementById('change-wait-timer'); if(waitSpan) waitSpan.innerText = `⏳ 等待 ${remain}s`; if(changeWaitSpan) changeWaitSpan.innerText = `⏳ 等待 ${remain}s`; if(remain <= 0) { clearWaitState(); confirmBtns.forEach(btn => { if(btn) btn.disabled = false; }); pwdInputs.forEach(inp => { if(inp) inp.disabled = false; }); if(waitSpan) waitSpan.innerText = ''; if(changeWaitSpan) changeWaitSpan.innerText = ''; } else { waitTimeout = setTimeout(() => { remain--; updateTimer(); }, 1000); } }; updateTimer(); }
+            function clearWaitState() { if(waitTimeout) { clearTimeout(waitTimeout); waitTimeout = null; } isWaiting = false; }
+            function updateAttemptsDisplay() { const attemptsSpan = document.getElementById('attempts-left'); const changeAttemptsSpan = document.getElementById('change-attempts-left'); if(attemptsSpan) attemptsSpan.innerText = `剩余尝试次数: ${remainingAttempts}`; if(changeAttemptsSpan) changeAttemptsSpan.innerText = `剩余尝试次数: ${remainingAttempts}`; if(remainingAttempts <= 0) permanentLock(); }
+            function permanentLock() { if(globalLocked) return; globalLocked = true; passwordUnlocked = false; const lockDiv = document.getElementById('global-lock'); if(lockDiv) lockDiv.style.display = 'flex'; ['timeBtn','quizBtn','changePwdBtn','startBtn','generateHtmlBtn'].forEach(id => { const btn = document.getElementById(id); if(btn) { btn.disabled = true; btn.style.pointerEvents = 'none'; } }); document.getElementById('password-modal').style.display = 'none'; document.getElementById('change-pwd-modal').style.display = 'none'; clearWaitState(); }
+            function verifyPasswordAndUnlock(inputPwd, onSuccess) { if(globalLocked) return false; if(isWaiting) { alert("请等待惩罚时间结束"); return false; } if(inputPwd === currentPassword) { remainingAttempts = 5; updateAttemptsDisplay(); passwordUnlocked = true; clearWaitState(); if(onSuccess) onSuccess(); return true; } else { processWrongPassword(); return false; } }
+            function showPasswordModal(modalId) { if(globalLocked) return; pendingModalId = modalId; const pwdModal = document.getElementById('password-modal'); document.getElementById('password-input').value = ''; pwdModal.style.display = 'flex'; if(!isWaiting) { document.getElementById('confirm-pwd-btn').disabled = false; document.getElementById('password-input').disabled = false; } }
+            function closePasswordModal() { if(isWaiting) { alert("正在惩罚等待中，无法关闭"); return; } document.getElementById('password-modal').style.display = 'none'; pendingModalId = null; }
+            function handlePasswordConfirm() { const entered = document.getElementById('password-input').value; verifyPasswordAndUnlock(entered, () => { document.getElementById('password-modal').style.display = 'none'; if(pendingModalId) { openModal(pendingModalId); pendingModalId = null; } }); }
+            function openChangePwdModal() { if(globalLocked) return; if(!passwordUnlocked) { showPasswordModal('change-pwd-modal'); return; } const changeModal = document.getElementById('change-pwd-modal'); document.getElementById('current-pwd').value = ''; document.getElementById('new-pwd').value = ''; document.getElementById('confirm-pwd').value = ''; changeModal.style.display = 'flex'; if(!isWaiting) document.getElementById('confirm-change-btn').disabled = false; updateAttemptsDisplay(); }
+            function closeChangePwdModal() { if(isWaiting) { alert("请等待惩罚结束"); return; } document.getElementById('change-pwd-modal').style.display = 'none'; }
+            function handleChangePassword() { if(globalLocked) return; if(isWaiting) { alert("请等待惩罚时间结束"); return; } const currentInput = document.getElementById('current-pwd').value; const newPwd = document.getElementById('new-pwd').value; const confirmNew = document.getElementById('confirm-pwd').value; if(currentInput !== currentPassword) { processWrongPassword(); alert("当前密码错误！"); document.getElementById('current-pwd').value = ''; return; } remainingAttempts = 5; updateAttemptsDisplay(); if(!newPwd || newPwd.length < 4) { alert("新密码长度至少4位"); return; } if(newPwd !== confirmNew) { alert("两次输入的新密码不一致"); return; } savePasswordToLocal(newPwd); alert("✅ 密码修改成功！新密码已生效。"); closeChangePwdModal(); passwordUnlocked = true; }
+            document.getElementById('confirm-pwd-btn').onclick = handlePasswordConfirm;
+            document.getElementById('cancel-pwd-btn').onclick = closePasswordModal;
+            document.getElementById('toggle-password').onclick = () => { const inp = document.getElementById('password-input'); inp.type = inp.type==='password'?'text':'password'; };
+            document.getElementById('toggle-current').onclick = () => { const inp = document.getElementById('current-pwd'); inp.type = inp.type==='password'?'text':'password'; };
+            document.getElementById('toggle-new').onclick = () => { const inp = document.getElementById('new-pwd'); inp.type = inp.type==='password'?'text':'password'; };
+            document.getElementById('toggle-confirm').onclick = () => { const inp = document.getElementById('confirm-pwd'); inp.type = inp.type==='password'?'text':'password'; };
+            document.getElementById('confirm-change-btn').onclick = handleChangePassword;
+            document.getElementById('cancel-change-btn').onclick = closeChangePwdModal;
+            document.getElementById('changePwdBtn').onclick = openChangePwdModal;
+            document.getElementById('timeBtn').onclick = () => { if(globalLocked) return; if(passwordUnlocked) openModal('time-modal'); else showPasswordModal('time-modal'); };
+            document.getElementById('quizBtn').onclick = () => { if(globalLocked) return; if(passwordUnlocked) openModal('ques-modal'); else showPasswordModal('ques-modal'); };
+            
+            // ================= 游戏核心 =================
+            // 注意：DEFAULT_QUESTIONS 会在生成HTML时被替换为当前题库
+            const DEFAULT_QUESTIONS = [
+  {
+    "q": "朱迪在《疯狂动物城》中的全名是？",
+    "a": "11111111",
+    "b": "朱迪·兔",
+    "c": "霍普斯警官",
+    "d": "朱迪·萝卜",
+    "correct": "11111111"
+  },
+  {
+    "q": "尼克推销给仓鼠的冰棍是什么做的？",
+    "a": "红色冰棍",
+    "b": "蓝色冰棍",
+    "c": "绿色冰棍",
+    "d": "黄色冰棍",
+    "correct": "红色冰棍"
+  },
+  {
+    "q": "闪电（Flash）是什么动物？",
+    "a": "树懒",
+    "b": "树袋熊",
+    "c": "蜗牛",
+    "d": "海龟",
+    "correct": "树懒"
+  },
+  {
+    "q": "动物城的大先生(Mr. Big)其实是？",
+    "a": "鼩鼱",
+    "b": "北极熊",
+    "c": "老鼠",
+    "d": "狐狸",
+    "correct": "鼩鼱"
+  },
+  {
+    "q": "朱迪住的公寓隔壁邻居总是很？",
+    "a": "吵闹",
+    "b": "安静",
+    "c": "神秘",
+    "d": "友善",
+    "correct": "吵闹"
+  },
+  {
+    "q": "尼克小时候想加入什么组织？",
+    "a": "童子军",
+    "b": "警察局",
+    "c": "狐狸帮",
+    "d": "话剧社",
+    "correct": "童子军"
+  }
+];
+            let gameState = { pool: [], score1: 0, score2: 0, timeLeft: 30, maxTime: 30, active: false, ropePos: 0, timerInterval: null, gameLog: { team1: [], team2: [] }, pendingTimeouts: [] };
+            const domGame = {
+                sTime: document.getElementById('setup-time'), timer: document.getElementById('timer'), q1: document.getElementById('q1'), q2: document.getElementById('q2'),
+                o1: document.getElementById('opts1'), o2: document.getElementById('opts2'), rope: document.getElementById('rope-move-container'), status: document.getElementById('status-label'),
+                gameOver: document.getElementById('game-over'), winText: document.getElementById('winner-text'), finalRes: document.getElementById('final-stats'),
+                score1: document.getElementById('score1'), score2: document.getElementById('score2'),
+                charJudy: document.getElementById('char-blue'), charNick: document.getElementById('char-red'), tableBody: document.getElementById('questions-table-body'),
+                judyReport: document.getElementById('judy-report'), nickReport: document.getElementById('nick-report'),
+                downloadBtn: document.getElementById('downloadPdfBtn'), playAgainBtn: document.getElementById('playAgainBtn')
+            };
+            function clearAllTimeouts() { gameState.pendingTimeouts.forEach(id => clearTimeout(id)); gameState.pendingTimeouts = []; }
+            function addTimeout(fn, delay) { const id = setTimeout(() => { fn(); gameState.pendingTimeouts = gameState.pendingTimeouts.filter(tid => tid !== id); }, delay); gameState.pendingTimeouts.push(id); return id; }
+            function formatTime(seconds) { const mins = Math.floor(seconds / 60); const secs = seconds % 60; return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`; }
+            function updateTimerDisplay() { domGame.timer.textContent = formatTime(gameState.timeLeft); }
+            function escapeHtml(text) { if(!text) return ''; return String(text).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+            function addQuestionRow(prefill = null) { const row = document.createElement('tr'); row.className = 'border-b border-slate-200 hover:bg-slate-50/80'; const vals = prefill || { q: '', a: '', b: '', c: '', d: '', correct: '' }; row.innerHTML = `<td class="p-2"><input type="text" value="${escapeHtml(vals.q)}" placeholder="题目" class="question-input">${'</td><td class="p-2"><input type="text" value="'+escapeHtml(vals.a)+'" placeholder="A" class="opt-a"></td><td class="p-2"><input type="text" value="'+escapeHtml(vals.b)+'" placeholder="B" class="opt-b"></td><td class="p-2"><input type="text" value="'+escapeHtml(vals.c)+'" placeholder="C" class="opt-c"></td><td class="p-2"><input type="text" value="'+escapeHtml(vals.d)+'" placeholder="D" class="opt-d"></td><td class="p-2"><select class="correct-select"></select></td><td class="p-2 text-center"><button onclick="this.closest(\'tr\').remove()" class="text-red-400 font-bold">🗑️</button></td>'}`; domGame.tableBody.appendChild(row); const select = row.querySelector('.correct-select'); const inps = [row.querySelector('.opt-a'), row.querySelector('.opt-b'), row.querySelector('.opt-c'), row.querySelector('.opt-d')]; const updateSelect = () => { const current = select.value; select.innerHTML = inps.map((inp, idx) => `<option value="${escapeHtml(inp.value)}">${['A','B','C','D'][idx]}: ${escapeHtml(inp.value)}</option>`).join(''); if(Array.from(select.options).some(o=>o.value===current)) select.value=current; }; inps.forEach(i=>i.addEventListener('input', updateSelect)); updateSelect(); if(vals.correct) setTimeout(()=>{ if(Array.from(select.options).some(opt=>opt.value===vals.correct)) select.value=vals.correct; },10); return row; }
+            window.addQuestionRow = () => addQuestionRow();
+            window.resetDefaultTable = () => { domGame.tableBody.innerHTML = ''; DEFAULT_QUESTIONS.forEach(q => addQuestionRow({ q: q.q, a: q.a, b: q.b, c: q.c, d: q.d, correct: q.correct })); };
+            function collectTableData() { return Array.from(domGame.tableBody.querySelectorAll('tr')).map(row=>({ q: row.querySelector('.question-input').value.trim(), options: [row.querySelector('.opt-a').value.trim(), row.querySelector('.opt-b').value.trim(), row.querySelector('.opt-c').value.trim(), row.querySelector('.opt-d').value.trim()], correct: row.querySelector('.correct-select').value })).filter(q=>q.q && q.options.every(opt=>opt)); }
+            window.saveTableAndClose = () => { gameState.pool = collectTableData(); if(gameState.pool.length===0){ resetDefaultTable(); gameState.pool=collectTableData(); } closeModal('ques-modal'); };
+            window.openModal = (id) => { if(!gameState.active && !globalLocked) document.getElementById(id).style.display = 'flex'; };
+            window.closeModal = (id) => document.getElementById(id).style.display = 'none';
+            
+            const PULL_STEP = 22;
+            const MAX_SHIFT = 150;
+            
+            function updateScoresAndRope() {
+                domGame.score1.textContent = gameState.score1;
+                domGame.score2.textContent = gameState.score2;
+                gameState.ropePos = Math.max(-MAX_SHIFT, Math.min(MAX_SHIFT, gameState.ropePos));
+                domGame.rope.style.transform = `translateX(${gameState.ropePos}px)`;
+                if (gameState.active && Math.abs(gameState.ropePos) >= MAX_SHIFT) endGame();
+            }
+            function disableAdminButtons(disabled) { ['timeBtn','quizBtn','changePwdBtn','generateHtmlBtn'].forEach(id=>{ const btn=document.getElementById(id); if(btn) if(disabled) btn.classList.add('disabled-btn'); else btn.classList.remove('disabled-btn'); }); }
+            
+            async function downloadReportPDF() {
+                if(globalLocked) return;
+                const winnerText = domGame.winText.innerText;
+                const scoreText = domGame.finalRes.innerText;
+                const judyLogs = gameState.gameLog.team1;
+                const nickLogs = gameState.gameLog.team2;
+                function buildColumn(logs, title, borderColor, icon) {
+                    const column = document.createElement('div'); column.className = 'pdf-column';
+                    const card = document.createElement('div'); card.className = 'pdf-card';
+                    const titleDiv = document.createElement('div'); titleDiv.className = 'pdf-card-title'; titleDiv.style.borderLeftColor = borderColor; titleDiv.innerHTML = `${icon} ${title}`;
+                    card.appendChild(titleDiv);
+                    if(!logs || logs.length === 0) { const empty = document.createElement('p'); empty.textContent = '✨ 暂无答题记录 ✨'; empty.style.textAlign = 'center'; empty.style.color = '#94a3b8'; empty.style.padding = '1rem'; card.appendChild(empty); }
+                    else { logs.forEach((log, idx) => { const record = document.createElement('div'); record.className = 'pdf-record'; const qDiv = document.createElement('div'); qDiv.className = 'pdf-question'; qDiv.textContent = `${idx+1}. ${log.question}`; record.appendChild(qDiv); const answerDiv = document.createElement('div'); answerDiv.className = 'pdf-answer'; const statusSpan = document.createElement('span'); statusSpan.className = log.isCorrect ? 'correct-badge' : 'wrong-badge'; statusSpan.textContent = log.isCorrect ? '✓ 正确' : '✗ 错误'; answerDiv.appendChild(statusSpan); answerDiv.appendChild(document.createTextNode(` 你的答案: ${log.userAnswer}`)); record.appendChild(answerDiv); if(!log.isCorrect) { const correctDiv = document.createElement('div'); correctDiv.className = 'pdf-correct-answer'; correctDiv.textContent = `正确答案: ${log.correctAnswer}`; record.appendChild(correctDiv); } card.appendChild(record); }); }
+                    column.appendChild(card); return column;
+                }
+                const container = document.createElement('div'); container.className = 'pdf-report-container';
+                const header = document.createElement('div'); header.className = 'pdf-header'; header.innerHTML = `<h1 style="font-size:2rem; font-weight:900;">🐰 vs 🦊 疯狂动物城·拔河战报</h1><p style="color:#475569;">${new Date().toLocaleString()}</p>`;
+                container.appendChild(header);
+                const scoreDiv = document.createElement('div'); scoreDiv.style.textAlign = 'center'; scoreDiv.innerHTML = `<div class="pdf-score">🏆 ${winnerText} &nbsp;&nbsp; ${scoreText}</div>`;
+                container.appendChild(scoreDiv);
+                const columnsWrapper = document.createElement('div'); columnsWrapper.className = 'pdf-two-columns';
+                columnsWrapper.appendChild(buildColumn(judyLogs, '朱迪的答题记录', '#2563eb', '🐰'));
+                columnsWrapper.appendChild(buildColumn(nickLogs, '尼克的答题记录', '#ea580c', '🦊'));
+                container.appendChild(columnsWrapper);
+                const style = document.createElement('style'); style.textContent = `.pdf-report-container * { font-family: 'Inter', sans-serif; } .pdf-two-columns { display: flex; flex-direction: row; gap: 2rem; flex-wrap: wrap; } .pdf-column { flex: 1; min-width: 280px; break-inside: avoid; }`;
+                container.appendChild(style);
+                document.body.appendChild(container);
+                try {
+                    const opt = { margin: [0.5, 0.5, 0.5, 0.5], filename: `zootopia_tugwar_${Date.now()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, letterRendering: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
+                    await html2pdf().set(opt).from(container).save();
+                    domGame.playAgainBtn.disabled = false; domGame.playAgainBtn.classList.remove('opacity-50', 'cursor-not-allowed'); domGame.playAgainBtn.classList.add('hover:scale-105');
+                    alert("✅ 战报已保存！现在可以点击「再战一局」继续游戏。");
+                } catch(e) { console.error(e); alert("生成PDF失败，请重试"); }
+                finally { document.body.removeChild(container); }
+            }
+            
+            function endGame() {
+                if(!gameState.active) return;
+                gameState.active=false; clearInterval(gameState.timerInterval); clearAllTimeouts(); disableAdminButtons(false);
+                const winner = gameState.ropePos < 0 ? 'JUDY' : (gameState.ropePos > 0 ? 'NICK' : 'DRAW');
+                domGame.winText.textContent = winner==='DRAW'?'🤝 平局！':(winner==='JUDY'?'🐰 朱迪 胜利！':'🦊 尼克 胜利！');
+                domGame.winText.className = `text-6xl font-black mb-2 italic ${winner==='JUDY'?'text-blue-700':(winner==='NICK'?'text-orange-600':'text-slate-800')}`;
+                domGame.finalRes.textContent = `${gameState.score1} : ${gameState.score2}`;
+                function renderReport(teamKey,container){ const logs=gameState.gameLog[teamKey]; if(!logs||!logs.length){ container.innerHTML='<p class="text-xs text-slate-400 text-center py-4">✨ 暂无答题记录 ✨</p>'; return; } container.innerHTML=''; logs.forEach((log,idx)=>{ const div=document.createElement('div'); div.className=`p-3 rounded-xl mb-2 text-xs border-l-4 ${log.isCorrect?'bg-green-100/50 border-green-500':'bg-red-100/50 border-red-500'}`; div.innerHTML=`<p class="font-bold text-slate-700 mb-1">${idx+1}. ${escapeHtml(log.question)}</p><p class="${log.isCorrect?'text-green-700':'text-red-700'}">你的答案: ${escapeHtml(log.userAnswer)} ${log.isCorrect?'✓':'✗'}</p>${!log.isCorrect?`<p class="text-slate-500">正确答案: ${escapeHtml(log.correctAnswer)}</p>`:''}`; container.appendChild(div); }); }
+                renderReport('team1',domGame.judyReport); renderReport('team2',domGame.nickReport);
+                domGame.gameOver.classList.remove('hidden');
+                domGame.playAgainBtn.disabled = true; domGame.playAgainBtn.classList.add('opacity-50', 'cursor-not-allowed'); domGame.playAgainBtn.classList.remove('hover:scale-105');
+                domGame.downloadBtn.onclick = downloadReportPDF;
+            }
+            function renderQuestion(team){ if(!gameState.active) return; if(!gameState.pool.length){ const msg="📚 暂无题目"; if(team===1) domGame.q1.textContent=msg; else domGame.q2.textContent=msg; if(team===1) domGame.o1.innerHTML='<div class="text-red-500">请编辑题库</div>'; else domGame.o2.innerHTML='<div class="text-red-500">请编辑题库</div>'; return; } const item=gameState.pool[Math.floor(Math.random()*gameState.pool.length)]; const qBox=team===1?domGame.q1:domGame.q2; const optsBox=team===1?domGame.o1:domGame.o2; qBox.textContent=item.q; optsBox.innerHTML=''; [...item.options].sort(()=>Math.random()-0.5).forEach(opt=>{ const btn=document.createElement('button'); btn.className='choice-btn w-full p-3.5 rounded-2xl font-bold text-sm bg-white border-b-4 border-slate-200 hover:bg-slate-50'; btn.textContent=opt; btn.onclick=()=>handleAnswer(team,opt===item.correct,btn,item.correct,item.q); optsBox.appendChild(btn); }); }
+            function handleAnswer(team,isCorrect,btn,correctAnswer,questionText){ if(!gameState.active) return; const optsBox=team===1?domGame.o1:domGame.o2; optsBox.querySelectorAll('button').forEach(b=>b.disabled=true); gameState.gameLog[team===1?'team1':'team2'].push({question:questionText,userAnswer:btn.textContent,correctAnswer:correctAnswer,isCorrect:isCorrect}); if(isCorrect){ btn.className=`choice-btn w-full p-3.5 rounded-2xl font-bold text-sm text-white border-b-4 ${team===1?'bg-blue-500 border-blue-700':'bg-orange-500 border-orange-700'}`; if(team===1){ gameState.score1+=10; gameState.ropePos -= PULL_STEP; animatePull(domGame.charJudy); } else { gameState.score2+=10; gameState.ropePos += PULL_STEP; animatePull(domGame.charNick); } updateScoresAndRope(); addTimeout(()=>renderQuestion(team),500); } else { btn.className='choice-btn w-full p-3.5 rounded-2xl font-bold text-sm text-white bg-red-500 border-red-700'; const correctBtn=Array.from(optsBox.querySelectorAll('button')).find(b=>b.textContent===correctAnswer); if(correctBtn) correctBtn.className='choice-btn w-full p-3.5 rounded-2xl font-bold text-sm text-white bg-green-500 border-green-700 pull-anim'; addTimeout(()=>renderQuestion(team),1500); } }
+            function animatePull(el){ el.classList.remove('idle-float'); el.classList.add('pull-anim'); addTimeout(()=>{ if(el){ el.classList.remove('pull-anim'); el.classList.add('idle-float'); } },400); }
+            window.applyAndStart = () => { if(globalLocked) return; if(gameState.active) resetGame(true); clearAllTimeouts(); clearInterval(gameState.timerInterval); gameState.maxTime = parseInt(domGame.sTime.value)||30; if(gameState.maxTime<10) gameState.maxTime=10; if(!gameState.pool.length){ resetDefaultTable(); gameState.pool=collectTableData(); } gameState.score1=0; gameState.score2=0; gameState.ropePos=0; gameState.timeLeft=gameState.maxTime; gameState.gameLog={team1:[],team2:[]}; gameState.active=true; domGame.gameOver.classList.add('hidden'); updateScoresAndRope(); updateTimerDisplay(); disableAdminButtons(true); renderQuestion(1); renderQuestion(2); gameState.timerInterval = setInterval(()=>{ if(!gameState.active) return; gameState.timeLeft--; updateTimerDisplay(); if(gameState.timeLeft<=0){ clearInterval(gameState.timerInterval); endGame(); } },1000); };
+            window.resetGame = (keepPool=false) => { if(globalLocked) return; gameState.active=false; clearInterval(gameState.timerInterval); clearAllTimeouts(); disableAdminButtons(false); domGame.gameOver.classList.add('hidden'); domGame.score1.textContent='0'; domGame.score2.textContent='0'; domGame.q1.textContent="🐾 准备好了吗？"; domGame.q2.textContent="🦊 来吧！"; domGame.o1.innerHTML=''; domGame.o2.innerHTML=''; domGame.rope.style.transform='translateX(0)'; gameState.score1=0; gameState.score2=0; gameState.ropePos=0; gameState.timeLeft=gameState.maxTime; gameState.gameLog={team1:[],team2:[]}; updateTimerDisplay(); };
+            function initGame() { resetDefaultTable(); gameState.pool = collectTableData(); domGame.gameOver.classList.add('hidden'); updateTimerDisplay(); }
+            window.openBatchPanel = () => document.getElementById('batch-panel').classList.remove('hidden');
+            window.closeBatchPanel = () => document.getElementById('batch-panel').classList.add('hidden');
+            window.importBatchQuestions = function(){ const raw=document.getElementById('batch-text').value; if(!raw.trim()){ alert("请粘贴数据"); return; } const lines=raw.split(/\r?\n/); let added=0, errors=[]; for(let i=0;i<lines.length;i++){ let line=lines[i].trim(); if(!line) continue; let parts=null; if(line.includes(',')) parts=line.split(',').map(s=>s.trim()); else if(line.includes('\t')) parts=line.split('\t').map(s=>s.trim()); else if(line.includes('|')) parts=line.split('|').map(s=>s.trim()); else parts=[line]; if(parts.length<6){ errors.push(`第${i+1}行字段不足`); continue; } const [q,a,b,c,d,correct]=parts; if(!q||!a||!b||!c||!d||!correct){ errors.push(`第${i+1}行有空字段`); continue; } if(![a,b,c,d].includes(correct)){ errors.push(`第${i+1}行正确选项不匹配`); continue; } addQuestionRow({q,a,b,c,d,correct}); added++; } if(errors.length) alert(`成功添加${added}题，${errors.length}行错误:\n${errors.slice(0,3).join('\n')}`); else alert(`✅ 成功添加${added}题`); document.getElementById('batch-text').value=''; closeBatchPanel(); };
+            window.clearBatchText = () => document.getElementById('batch-text').value='';
+            initGame();
+            domGame.playAgainBtn.onclick = () => { if(!domGame.playAgainBtn.disabled) resetGame(); else alert("请先下载战报PDF再开始新对局！"); };
+            
+            // ================= 生成独立HTML功能（完美修复版） =================
+            function generateStandaloneHTML() {
+                const currentQuestions = collectTableData();
+                if(currentQuestions.length === 0) {
+                    alert("题库为空，无法生成！请至少添加一道题目。");
+                    return;
+                }
+                const currentTime = domGame.sTime.value;
+                // 获取当前页面的完整 HTML 字符串
+                let htmlContent = document.documentElement.outerHTML;
+                // 使用正则精确替换 DEFAULT_QUESTIONS 数组
+                const newQuestionsStr = JSON.stringify(currentQuestions.map(q => ({
+                    q: q.q,
+                    a: q.options[0],
+                    b: q.options[1],
+                    c: q.options[2],
+                    d: q.options[3],
+                    correct: q.correct
+                })), null, 2);
+                // 替换 DEFAULT_QUESTIONS 定义（注意多行匹配）
+                htmlContent = htmlContent.replace(/const DEFAULT_QUESTIONS = \[[\s\S]*?\];/, `const DEFAULT_QUESTIONS = ${newQuestionsStr};`);
+                // 替换 setup-time 的 value
+                htmlContent = htmlContent.replace(/document\.getElementById\('setup-time'\)\.value = "?\d+"?;/, `document.getElementById('setup-time').value = "${currentTime}";`);
+                // 确保 game-over 遮罩初始隐藏（如果因为某些原因显示）
+                htmlContent = htmlContent.replace(/id="game-over" class="[^"]*"/, 'id="game-over" class="hidden"');
+                // 确保绳子初始位置归零
+                htmlContent = htmlContent.replace(/<div id="rope-move-container" class="rope-container" style="transform: translateX\([^)]+\);">/, '<div id="rope-move-container" class="rope-container" style="transform: translateX(0px);">');
+                // 确保分数归零
+                htmlContent = htmlContent.replace(/<div id="score1" class="text-7xl font-black text-blue-700 drop-shadow-sm">\d+<\/div>/, '<div id="score1" class="text-7xl font-black text-blue-700 drop-shadow-sm">0</div>');
+                htmlContent = htmlContent.replace(/<div id="score2" class="text-7xl font-black text-orange-600 drop-shadow-sm">\d+<\/div>/, '<div id="score2" class="text-7xl font-black text-orange-600 drop-shadow-sm">0</div>');
+                // 重置计时器显示
+                const mins = Math.floor(parseInt(currentTime) / 60);
+                const secs = parseInt(currentTime) % 60;
+                const timeStr = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+                htmlContent = htmlContent.replace(/<span id="timer" class="text-5xl font-mono font-black text-white tracking-wider">[^<]+<\/span>/, `<span id="timer" class="text-5xl font-mono font-black text-white tracking-wider">${timeStr}</span>`);
+                // 清空答题卡内容
+                htmlContent = htmlContent.replace(/<div id="judy-report" class="report-card space-y-2 text-left pr-2">[\s\S]*?<\/div>/, '<div id="judy-report" class="report-card space-y-2 text-left pr-2"></div>');
+                htmlContent = htmlContent.replace(/<div id="nick-report" class="report-card space-y-2 text-left pr-2">[\s\S]*?<\/div>/, '<div id="nick-report" class="report-card space-y-2 text-left pr-2"></div>');
+                // 重置题目文本
+                htmlContent = htmlContent.replace(/<p id="q1" class="text-slate-800 text-xl font-black leading-snug">[^<]*<\/p>/, '<p id="q1" class="text-slate-800 text-xl font-black leading-snug">🐾 准备答题！</p>');
+                htmlContent = htmlContent.replace(/<p id="q2" class="text-slate-800 text-xl font-black leading-snug">[^<]*<\/p>/, '<p id="q2" class="text-slate-800 text-xl font-black leading-snug">🦊 放马过来！</p>');
+                // 确保选项区域为空
+                htmlContent = htmlContent.replace(/<div id="opts1" class="grid gap-2.5">[\s\S]*?<\/div>/, '<div id="opts1" class="grid gap-2.5"></div>');
+                htmlContent = htmlContent.replace(/<div id="opts2" class="grid gap-2.5">[\s\S]*?<\/div>/, '<div id="opts2" class="grid gap-2.5"></div>');
+                // 添加 DOCTYPE
+                if (!htmlContent.startsWith('<!DOCTYPE html>')) {
+                    htmlContent = '<!DOCTYPE html>\n' + htmlContent;
+                }
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.href = url;
+                link.download = `zootopia_game_${Date.now()}.html`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                alert("✅ HTML 文件已生成并下载！它包含了您当前的所有题目和时长设置，并且已重置所有游戏状态，打开后即可正常开始对战。");
+            }
+            document.getElementById('generateHtmlBtn').onclick = () => { if(globalLocked) return; generateStandaloneHTML(); };
+        })();
+    </script>
+
+</body></html>
